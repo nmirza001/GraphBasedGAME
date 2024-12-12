@@ -1,0 +1,107 @@
+// File: GameData.java
+import java.util.*;
+import java.io.*;
+
+public class GameData implements Serializable {
+    private static final long serialVersionUID = 1L;
+    Map<String, Location> locations;
+    Map<String, Set<String>> connections;
+    List<Mission> missions; 
+
+    public GameData() {
+        locations = new HashMap<>();
+        connections = new HashMap<>();
+        missions = new ArrayList<>();
+    }
+
+    public void loadLocations(String filename) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String locationName = line.trim().toLowerCase();
+                Location location = new Location(locationName);
+                
+                line = reader.readLine();
+                if (line != null) {
+                    location.setDescription(line.trim());
+                }
+                
+                locations.put(locationName, location);
+            }
+        }
+    }
+
+    public void loadConnections(String filename) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String locationName = line.trim().toLowerCase();
+                if (!locations.containsKey(locationName)) {
+                    System.err.println("Location " + locationName + " not found. Skipping.");
+                    continue;
+                }
+                
+                String countLine = reader.readLine();
+                if (countLine != null) {
+                    try {
+                        int connectionCount = Integer.parseInt(countLine.trim());
+                        Set<String> connectedLocations = new HashSet<>();
+                        
+                        for (int i = 0; i < connectionCount; i++) {
+                            String connected = reader.readLine().trim().toLowerCase();
+                            connectedLocations.add(connected);
+                        }
+                        
+                        connections.put(locationName, connectedLocations);
+                        reader.readLine(); // Empty line
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid connection count for " + locationName);
+                    }
+                }
+            }
+        }
+    }
+
+    public void loadEnemies(String filename) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String locationName = line.trim().toLowerCase();
+                if (locationName.isEmpty()) continue;
+                
+                if (!locations.containsKey(locationName)) {
+                    System.err.println("Location " + locationName + " not found for enemy");
+                    continue;
+                }
+                
+                Location location = locations.get(locationName);
+                String enemyName = reader.readLine().trim();
+                int health = Integer.parseInt(reader.readLine().trim());
+                int attackPower = Integer.parseInt(reader.readLine().trim());
+                
+                Enemy enemy = new Enemy(enemyName, health, attackPower);
+                location.addEnemy(enemy);
+            }
+        }
+    }
+     private void createMissions() {
+        missions.add(new Mission("Survey Titan", "titan", null, "Survey Titan and report your findings.", 150));
+        missions.add(new Mission("Retrieve Martian Artifact", "mars", null, "Retrieve a valuable artifact from Mars.", 200));
+        missions.add(new Mission("Eliminate Space Pirate", "jupiter", "Space Pirate", "Eliminate the notorious Space Pirate menacing the Jovian system.", 300));
+        missions.add(new Mission("Rescue Scientists", "europa", null, "Rescue the trapped scientists on Europa.", 250));
+        missions.add(new Mission("Explore and Defeat", "ganymede", "Alien Scout", "Explore Ganymede and defeat the Alien Scout lurking there.", 350));
+
+        // Add more missions as needed, following the same format:
+        missions.add(new Mission("Investigate Venus", "venus", null, "Investigate the unusual atmospheric readings on Venus.", 175));
+        missions.add(new Mission("Lunar Exploration", "moon", null, "Explore the dark side of the Moon.", 220));
+        missions.add(new Mission("Defend Proxima Centauri b", "proxima centauri b", "Proxima Invader", "Protect colonists from invaders at Proxima Centauri b.", 400));
+
+
+
+    }
+     
+     public List<Mission> getMissions() {
+        return missions;
+    }
+}
+

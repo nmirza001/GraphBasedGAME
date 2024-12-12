@@ -1,0 +1,47 @@
+// File: Enemy.java
+import java.io.Serializable;
+import java.util.List;
+import java.util.ArrayList;
+
+public class Enemy implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private String name;
+    private int maxHealth;
+    private int currentHealth;
+    private int attackPower;
+    private List<String> weaknesses;
+    private boolean defeated;
+
+    public Enemy(String name, int health, int attackPower) {
+        this.name = name;
+        this.maxHealth = health;
+        this.currentHealth = health;
+        this.attackPower = attackPower;
+        this.weaknesses = new ArrayList<>();
+        this.defeated = false;
+    }
+
+    public void takeDamage(int damage) {
+        currentHealth -= damage;
+        if (currentHealth <= 0) {
+            currentHealth = 0;
+            defeated = true;
+        }
+    }
+
+    public String getName() { return name; }
+    public int getCurrentHealth() { return currentHealth; }
+    public int getMaxHealth() { return maxHealth; }
+    public int getAttackPower() { return attackPower; }
+    public boolean isDefeated() { return defeated; }
+    public int getHealthPercentage() {
+        return (int)((currentHealth * 100.0f) / maxHealth);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s (Health: %d/%d, Attack: %d)", 
+            name, currentHealth, maxHealth, attackPower);
+    }
+}
+

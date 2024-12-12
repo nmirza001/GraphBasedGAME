@@ -1,0 +1,42 @@
+// GameState.java (New class for save/load functionality)
+public class GameState implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
+    private String currentLocation;
+    private int energy;
+    private int score;
+    private Mission currentMission;
+    private Set<String> visitedLocations;
+    private Map<String, Location> locations;
+    
+    public GameState(String currentLocation, int energy, int score, 
+                    Mission currentMission, Set<String> visitedLocations,
+                    Map<String, Location> locations) {
+        this.currentLocation = currentLocation;
+        this.energy = energy;
+        this.score = score;
+        this.currentMission = currentMission;
+        this.visitedLocations = new HashSet<>(visitedLocations);
+        this.locations = new HashMap<>(locations);
+    }
+    
+    public void saveToFile(String filename) throws IOException {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename))) {
+            out.writeObject(this);
+        }
+    }
+    
+    public static GameState loadFromFile(String filename) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename))) {
+            return (GameState) in.readObject();
+        }
+    }
+    
+    // Getters for all fields
+    public String getCurrentLocation() { return currentLocation; }
+    public int getEnergy() { return energy; }
+    public int getScore() { return score; }
+    public Mission getCurrentMission() { return currentMission; }
+    public Set<String> getVisitedLocations() { return new HashSet<>(visitedLocations); }
+    public Map<String, Location> getLocations() { return new HashMap<>(locations); }
+}

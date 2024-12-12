@@ -1,0 +1,24 @@
+earth
+The cradle of humanity, now a bustling spaceport. Launch complex for interstellar travel. Features advanced defense systems and anti-gravity technology.
+moon
+Earth's silent guardian, a research hub with extensive Helium-3 mining operations. Low gravity research facilities and orbital defense stations.
+mars
+The red planet, partially terraformed with biodomes. Rich in rare minerals and ancient alien artifacts. Home to the first human colony.
+venus
+A hostile world with floating research platforms. Valuable sulfur mines in the upper atmosphere. Experimental weather control stations.
+jupiter
+Gas mining stations orbit this giant. Strong magnetic field powers advanced research facilities. Strategic military outpost.
+europa
+Underwater research bases explore the subsurface ocean. Mysterious alien signals detected. Requires specialized pressure equipment.
+ganymede
+Major refueling station and ice mining facility. Strong magnetic interactions create beautiful auroras. Gateway to outer system.
+titan
+Methane harvesting facilities dot the surface. Rich in exotic compounds. Advanced xenobiology research stations study potential life.
+proxima_centauri_b
+First exoplanet colony attempt. Harsh but habitable conditions. Forward base for deep space exploration.
+kepler_186f
+Remote research outpost. Signs of ancient civilizations. Strategic importance for expansion.
+saturn
+Rings host mining operations. Antimatter research facilities. Key defensive position.
+neptune
+Deep space monitoring station. Experimental quantum drives tested here. Last line of system defense

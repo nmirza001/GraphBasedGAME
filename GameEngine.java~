@@ -1,0 +1,303 @@
+// File: GameEngine.java
+import java.util.*;
+import java.io.*;
+
+public class GameEngine {
+    private final GameData gameData;
+    private final GameGUI gameGUI;
+    private String currentLocation;
+    private int energy;
+    private int score;
+    private Mission currentMission;
+    private Set<String> visitedLocations;
+    private Random random;
+    private static final int INITIAL_ENERGY = 100;
+    private static final int MOVE_ENERGY_COST = 10;
+    private static final int COMBAT_ENERGY_COST = 15;
+    private static final int SEARCH_ENERGY_COST = 5;
+    private static final String SAVE_DIR = "saves/";
+
+    public GameEngine(GameData gameData, GameGUI gameGUI) {
+        this.gameData = gameData;
+        this.gameGUI = gameGUI;
+        this.energy = INITIAL_ENERGY;
+        this.score = 0;
+        this.visitedLocations = new HashSet<>();
+        this.random = new Random();
+    }
+
+   // In GameEngine.java
+    public void startGame(String startLocation) {
+        currentLocation = startLocation.toLowerCase();
+        visitedLocations.add(currentLocation);
+        Location location = gameData.locations.get(currentLocation);
+
+        if (location != null) {
+            location.setVisited(true);
+            gameGUI.updateLocation(location.getName());
+            gameGUI.appendToConsole("Starting exploration at " + location.getName());
+            gameGUI.appendToConsole(location.getDescription());
+        }
+
+        generateMission(); // Generate a mission at game start
+
+        if (currentMission != null) {  // Check if mission generation was successful
+            gameGUI.updateMission("Current Mission: " + currentMission.getTitle());
+            gameGUI.appendToConsole(currentMission.getDescription());  //Display mission description at start
+        } else {
+            gameGUI.updateMission("Current Mission: None");  //Set if no mission is found
+            gameGUI.appendToConsole("No starting mission available. Explore to find new missions.");
+        }
+
+
+        gameGUI.updateScore(score); //Initialize GUI score display
+        gameGUI.updateEnergyBar(energy); //Initialize GUI Energy Bar
+
+    }
+
+    // BFS implementation for path finding
+    public List<String> findShortestPath(String start, String end) {
+        Map<String, String> parentMap = new HashMap<>();
+        Queue<String> queue = new LinkedList<>();
+        Set<String> visited = new HashSet<>();
+        
+        queue.offer(start);
+        visited.add(start);
+        
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            if (current.equals(end)) {
+                return reconstructPath(parentMap, start, end);
+            }
+            
+            Set<String> neighbors = gameData.connections.getOrDefault(current, new HashSet<>());
+            for (String neighbor : neighbors) {
+                if (!visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    parentMap.put(neighbor, current);
+                    queue.offer(neighbor);
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    // DFS implementation for property search
+    public List<String> searchLocationsDFS(String propertyKey, String propertyValue) {
+        if (energy < SEARCH_ENERGY_COST) {
+            gameGUI.appendToConsole("Insufficient energy for search operation!");
+            return null;
+        }
+
+        Set<String> visited = new HashSet<>();
+        List<String> foundLocations = new ArrayList<>();
+        dfsSearch(currentLocation, propertyKey, propertyValue, visited, foundLocations);
+        
+        energy -= SEARCH_ENERGY_COST;
+        gameGUI.updateEnergyBar(energy);
+        return foundLocations;
+    }
+
+    private void dfsSearch(String location, String propertyKey, String propertyValue, 
+                         Set<String> visited, List<String> results) {
+        visited.add(location);
+        
+        Location loc = gameData.locations.get(location);
+        if (loc != null && propertyValue.equals(loc.getProperty(propertyKey))) {
+            results.add(location);
+        }
+        
+        Set<String> neighbors = gameData.connections.getOrDefault(location, new HashSet<>());
+        for (String neighbor : neighbors) {
+            if (!visited.contains(neighbor)) {
+                dfsSearch(neighbor, propertyKey, propertyValue, visited, results);
+            }
+        }
+    }
+
+    private List<String> reconstructPath(Map<String, String> parentMap, String start, String end) {
+        LinkedList<String> path = new LinkedList<>();
+        String current = end;
+        
+        while (current != null) {
+            path.addFirst(current);
+            current = parentMap.get(current);
+        }
+        
+        return path;
+    }
+
+    public boolean moveTo(String destination) {
+        destination = destination.toLowerCase();
+        Set<String> possibleMoves = getPossibleMoves();
+        
+        if (!possibleMoves.contains(destination)) {
+            gameGUI.appendToConsole("Cannot move to " + destination + " from current location.");
+            return false;
+        }
+
+        if (energy < MOVE_ENERGY_COST) {
+            gameGUI.appendToConsole("Insufficient energy for movement!");
+            return false;
+        }
+
+        currentLocation = destination;
+        energy -= MOVE_ENERGY_COST;
+        visitedLocations.add(destination);
+        gameData.locations.get(destination).setVisited(true);
+
+        gameGUI.updateEnergyBar(energy);
+        gameGUI.updateLocation(destination);
+        handleLocationArrival();
+        
+        return true;
+    }
+
+    public void initiateCombat(Enemy enemy) {
+        if (energy < COMBAT_ENERGY_COST) {
+            gameGUI.appendToConsole("Insufficient energy for combat!");
+            return;
+        }
+
+        gameGUI.appendToConsole("Engaging in combat with " + enemy.getName());
+        
+        while (!enemy.isDefeated() && energy >= COMBAT_ENERGY_COST) {
+            // Player attack
+            int playerDamage = calculatePlayerDamage();
+            enemy.takeDamage(playerDamage);
+            gameGUI.appendToConsole("You deal " + playerDamage + " damage to " + enemy.getName());
+            
+            // Enemy attack if still alive
+            if (!enemy.isDefeated()) {
+                int enemyDamage = calculateEnemyDamage(enemy);
+                energy -= enemyDamage;
+                gameGUI.appendToConsole(enemy.getName() + " deals " + enemyDamage + " damage");
+                gameGUI.updateEnergyBar(energy);
+            }
+            
+            // Status update
+            gameGUI.appendToConsole(String.format(
+                "Status - Enemy Health: %d%%, Your Energy: %d",
+                enemy.getHealthPercentage(), 
+                energy
+            ));
+        }
+
+        if (enemy.isDefeated()) {
+            handleCombatVictory(enemy);
+        } else {
+            handleCombatDefeat();
+        }
+    }
+
+    private int calculatePlayerDamage() {
+        int baseDamage = 15 + random.nextInt(10);
+        boolean criticalHit = random.nextDouble() < 0.2; // 20% chance
+        return criticalHit ? baseDamage * 2 : baseDamage;
+    }
+
+    private int calculateEnemyDamage(Enemy enemy) {
+        return Math.max(5, enemy.getAttackPower() + random.nextInt(10) - 5);
+    }
+
+    private void handleCombatVictory(Enemy enemy) {
+        gameGUI.appendToConsole("Victory! " + enemy.getName() + " has been defeated!");
+        score += 100;
+        gameGUI.updateScore(score);
+        gameData.locations.get(currentLocation).removeEnemy(enemy);
+        
+        if (currentMission != null && currentMission.isComplete(currentLocation, enemy)) {
+            completeMission();
+        }
+    }
+
+    private void handleCombatDefeat() {
+        gameGUI.appendToConsole("Combat failed - insufficient energy!");
+        if (energy <= 0) {
+            gameGUI.gameOver();
+        }
+    }
+
+    public void saveGame(String filename) throws IOException {
+        File saveDir = new File(SAVE_DIR);
+        if (!saveDir.exists()) {
+            saveDir.mkdirs();
+        }
+
+        try (ObjectOutputStream out = new ObjectOutputStream(
+                new FileOutputStream(SAVE_DIR + filename))) {
+            GameState state = new GameState(
+                currentLocation,
+                energy,
+                score,
+                currentMission,
+                visitedLocations,
+                gameData.locations
+            );
+            out.writeObject(state);
+            gameGUI.appendToConsole("Game saved successfully!");
+        }
+    }
+
+    public void loadGame(String filename) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream in = new ObjectInputStream(
+                new FileInputStream(SAVE_DIR + filename))) {
+            GameState state = (GameState) in.readObject();
+            
+            currentLocation = state.getCurrentLocation();
+            energy = state.getEnergy();
+            score = state.getScore();
+            currentMission = state.getCurrentMission();
+            visitedLocations = state.getVisitedLocations();
+            gameData.locations = state.getLocations();
+            
+            gameGUI.updateLocation(currentLocation);
+            gameGUI.updateEnergyBar(energy);
+            gameGUI.updateScore(score);
+            gameGUI.appendToConsole("Game loaded successfully!");
+            handleLocationArrival();
+        }
+    }
+
+    private void handleLocationArrival() {
+        Location location = gameData.locations.get(currentLocation);
+        gameGUI.appendToConsole("\nArrived at " + location.getName());
+        gameGUI.appendToConsole(location.getDescription());
+        
+        if (location.hasEnemies()) {
+            gameGUI.appendToConsole("\nWarning: Enemies detected!");
+            location.getEnemies().forEach(enemy -> 
+                gameGUI.appendToConsole("- " + enemy.toString())
+            );
+        }
+    }
+
+    private void completeMission() {
+        score += currentMission.getReward();
+        gameGUI.appendToConsole(String.format(
+            "Mission Complete: %s\nReward: %d points",
+            currentMission.getTitle(),
+            currentMission.getReward()
+        ));
+        currentMission = null;
+    }
+
+    // Getters and utility methods
+    public String getCurrentLocation() { return currentLocation; }
+    public String getCurrentLocationDescription() {
+        Location loc = gameData.locations.get(currentLocation);
+        return loc != null ? loc.getDescription() : "Unknown location.";
+    }
+    public int getEnergy() { return energy; }
+    public int getScore() { return score; }
+    public Mission getCurrentMission() { return currentMission; }
+    public Set<String> getVisitedLocations() { return new HashSet<>(visitedLocations); }
+    public boolean canMoveTo(String destination) {
+        return gameData.connections.getOrDefault(currentLocation, new HashSet<>())
+                                 .contains(destination.toLowerCase());
+    }
+    public Set<String> getPossibleMoves() {
+        return new HashSet<>(gameData.connections.getOrDefault(currentLocation, new HashSet<>()));
+    }
+}
